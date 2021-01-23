@@ -1,31 +1,62 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import createDataContext from './createDataContext';
+import trackerApi from '../api/tracker';
+import { navigate } from '../navigationRef';
 
 const authReducer = (state, action) => {
   switch (action.type) {
+    case 'add_error':
+      return { ...state, errorMessage: action.payload };
+    case 'signin':
+      return { errorMessage: '', token: action.payload };
+    case 'clear_error_message':
+      return { ...state, errorMessage: '' }
     default:
       return true;
   }
 };
 
-const signup = (dispatch) => {
-  return ({ email, password }) => {
-    // make api request to signup with email and passowrd
+const clearErrorMessage = dispatch => () => {
+  dispatch({ type: 'clear_error_message' })
+}
 
-    // if signup, modify out state, and say that we are authenticated
+const signup = dispatch => async ({ email, password }) => {
+  try {
+    const response = await trackerApi.post('/signup', { email, password });
+    const token = response.data.token;
+    await AsyncStorage.setItem('token', token);
 
-    // if failed, we probably show a error message
-  };
+    dispatch({ type: 'signin', payload: token });
+
+    navigate('TrackList');
+      
+  } catch (err) {
+    console.log(err);
+    dispatch({ 
+      type: 'add_error', 
+      payload: 'Something went wrong with signup' 
+    });
+  }
 };
 
-const signin = (dispatch) => {
-  return ({ email, password }) => {
-    // make api request to signin with email and passowrd
+const signin = (dispatch) => async ({ email, password }) => {
+  try {
+    const response = await trackerApi.post('/signin', { email, password });
+    const token = response.data.token;
 
-    // handle success
-
-    // handle failed
-  };
+    await AsyncStorage.setItem('token', token);
+    dispatch({ type: 'signin', payload: token });
+    navigate('TrackList');
+        
+  } catch (err) {
+    console.log(err);
+    dispatch({ 
+      type: 'add_error', 
+      payload: 'Something went wrong with signup' 
+    });
+  }
 };
+
 
 const signout = (dispatch) => {
   return () => {
@@ -42,7 +73,8 @@ export const { Provider, Context } = createDataContext(
   {
     signin,
     signup,
-    signup,
+    signout,
+    clearErrorMessage,
   },
-  { isSignedIn: false }
+  { token: null, errorMessage: '' }
 );
